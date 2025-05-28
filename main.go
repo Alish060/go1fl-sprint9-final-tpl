@@ -15,9 +15,10 @@ const (
 )
 
 // generateRandomElements generates random elements.
-func generateRandomElements(size int) ([]int, error) {
+func generateRandomElements(size int) []int {
 	if size <= 0 {
-		return []int{}, errors.New("некорреткный размер")
+		fmt.Print(errors.New("incorrect size"))
+		return []int{}
 	}
 
 	slice := make([]int, size)
@@ -25,13 +26,14 @@ func generateRandomElements(size int) ([]int, error) {
 		slice[i] = rand.Int()
 	}
 
-	return slice, nil
+	return slice
 }
 
 // maximum returns the maximum number of elements.
-func maximum(data []int) (int, error) {
+func maximum(data []int) int {
 	if len(data) == 0 {
-		return 0, errors.New("слайс пустой")
+		fmt.Print(errors.New("empty slice"))
+		return 0
 	}
 
 	max := data[0]
@@ -40,67 +42,53 @@ func maximum(data []int) (int, error) {
 			max = v
 		}
 	}
-	return max, nil
+	return max
 
 }
 
 // maxChunks returns the maximum number of elements in a chunks.
-func maxChunks(data []int) (int, error) {
+func maxChunks(data []int) int {
 	// ваш код здесь
 	if len(data) <= 1 {
-		return 0, errors.New("слайс пустой")
+		fmt.Print(errors.New("empty slice"))
+		return 0
 	}
 	var wg sync.WaitGroup
-	var mu sync.Mutex
-	maxSlice := []int{}
+	maxSlice := make([]int, CHUNKS)
+	subSliceSize := len(data) / CHUNKS
+	remainder := len(data) % CHUNKS
+	start := 0
+	wg.Add(CHUNKS)
 	for i := 0; i < CHUNKS; i++ {
-		subSliceSize := len(data) / CHUNKS
-		start := i * subSliceSize
 		end := start + subSliceSize
-		wg.Add(1)
-		go func(subLice []int) {
+		if i < remainder {
+			end++
+		}
+		go func(subSlice []int, index int) {
 			defer wg.Done()
-			max := subLice[0]
-			for _, v := range subLice {
-				if v > max {
-					max = v
-				}
-			}
-			mu.Lock()
-			maxSlice = append(maxSlice, max)
-			mu.Unlock()
-		}(data[start:end])
+			max := maximum(subSlice)
+			maxSlice[index] = max
+		}(data[start:end], i)
+		start = end
 	}
 	wg.Wait()
-	result, err := maximum(maxSlice)
-	if err != nil {
-		return 0, err
-	}
-	return result, nil
+	result := maximum(maxSlice)
+	return result
 }
 
 func main() {
 	fmt.Printf("Генерируем %d целых чисел", SIZE)
 	// ваш код здесь
-	data, err := generateRandomElements(SIZE)
-	if err != nil {
-		fmt.Print(err.Error())
-	}
+	data := generateRandomElements(SIZE)
 	fmt.Println("Ищем максимальное значение в один поток")
 	start := time.Now()
-	max, err := maximum(data)
-	if err != nil {
-		fmt.Print(err.Error())
-	}
+	max := maximum(data)
 	elapsed := time.Duration(time.Since(start).Microseconds())
 	fmt.Printf("Максимальное значение элемента: %d\nВремя поиска: %d ms\n", max, elapsed)
 
 	fmt.Printf("Ищем максимальное значение в %d потоков", CHUNKS)
 	start = time.Now()
-	max, err = maxChunks(data)
-	if err != nil {
-		fmt.Print(err.Error())
-	}
+	max = maxChunks(data)
 	elapsed = time.Duration(time.Since(start).Microseconds())
 	fmt.Printf("Максимальное значение элемента: %d\nВремя поиска: %d ms\n", max, elapsed)
 }
